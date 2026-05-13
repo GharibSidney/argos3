@@ -103,16 +103,11 @@ private:
     * and grows exponentially to 1 when the obstacle is
     * touching the robot.
     */
-   Real m_fDelta;
    /* Wheel speed. */
    Real m_fWheelVelocity;
    /* Angle tolerance range to go straight.
     * It is set to [-alpha,alpha]. */
    CRange<CRadians> m_cGoStraightAngleRange;
-   CRandom::CRNG* m_pcRNG;
-   bool isTurning;
-   bool turnRight;
-   unsigned int counter;
 };
 
 #endif
