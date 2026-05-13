@@ -11,7 +11,7 @@
 CFootBotDiffusion::CFootBotDiffusion() :
    m_pcWheels(NULL),
    m_pcProximity(NULL),
-   m_cAlpha(2.0f),
+   m_cAlpha(10.0f),
    m_fWheelVelocity(2.5f),
    m_cGoStraightAngleRange(-ToRadians(m_cAlpha), ToRadians(m_cAlpha)) {}
 
@@ -28,29 +28,40 @@ void CFootBotDiffusion::Init(TConfigurationNode& t_node) {
 
 void CFootBotDiffusion::ControlStep() {
    const CCI_FootBotProximitySensor::TReadings& tProxReads = m_pcProximity->GetReadings();
-   CVector2 cRepulsive;
-   for(size_t i = 0; i < tProxReads.size(); ++i) {
-      if(tProxReads[i].Value > 0.0f) {
-         cRepulsive -= CVector2(tProxReads[i].Value, tProxReads[i].Angle);
-      }
-   }
-   
-   CVector2 cAttractive(m_fWheelVelocity, CRadians::ZERO);
-   CVector2 cNet = cAttractive + cRepulsive*(m_fWheelVelocity / 2.5f); // 2.5f is the base/default speed 
-   CRadians cAngle = cNet.Angle();
-   std::cout << "Angle" << cNet.Angle() << std::endl;
 
+   bool bClear = true;
+   size_t worstIdx = 0;
+   for(size_t i = 0; i < tProxReads.size(); ++i) {
+      if(tProxReads[i].Value > 0.0f) bClear = false;
+      if(tProxReads[i].Value > tProxReads[worstIdx].Value) worstIdx = i;
+   }
+   // if all values equals, just go forward
+   if(bClear) {
+      m_pcWheels->SetLinearVelocity(m_fWheelVelocity, m_fWheelVelocity);
+      return;
+   }
+   /* f(n) = g + h where h is angular distance FROM the worst sensor */
+   std::vector<Real> cost(tProxReads.size());
+   for(size_t i = 0; i < tProxReads.size(); ++i) {
+      Real g = tProxReads[i].Value;
+      Real h = -Abs((tProxReads[i].Angle - tProxReads[worstIdx].Angle).SignedNormalize().GetValue());
+      cost[i] = g + h;
+   }
+
+   size_t bestIdx = 0;
+   for(size_t i = 1; i < tProxReads.size(); ++i) {
+      if(cost[i] < cost[bestIdx]) bestIdx = i;
+   }
+
+   CRadians cAngle = tProxReads[bestIdx].Angle;
    if(m_cGoStraightAngleRange.WithinMinBoundIncludedMaxBoundIncluded(cAngle)) {
-      /* Clear path: go straight */
       m_pcWheels->SetLinearVelocity(m_fWheelVelocity, m_fWheelVelocity);
    }
    else if(cAngle.GetValue() > 0.0f) {
-      /* Turn left */
-      m_pcWheels->SetLinearVelocity(-m_fWheelVelocity, m_fWheelVelocity);
+      m_pcWheels->SetLinearVelocity(0.0f, m_fWheelVelocity);
    }
    else {
-      /* Turn right*/
-      m_pcWheels->SetLinearVelocity(m_fWheelVelocity, -m_fWheelVelocity);
+      m_pcWheels->SetLinearVelocity(m_fWheelVelocity, 0.0f);
    }
 }
 
