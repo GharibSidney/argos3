@@ -36,7 +36,7 @@ void CFootBotDiffusion::ControlStep() {
    }
    
    CVector2 cAttractive(m_fWheelVelocity, CRadians::ZERO);
-   CVector2 cNet = cAttractive + cRepulsive;
+   CVector2 cNet = cAttractive + cRepulsive*(m_fWheelVelocity /2.5f);
    CRadians cAngle = cNet.Angle();
    std::cout << "Angle" << cNet.Angle() << std::endl;
 
